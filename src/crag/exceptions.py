@@ -11,3 +11,11 @@ class ConfigurationError(CragError):
 
 class IntegrationError(CragError):
     """Raised when a configured external integration fails."""
+
+
+class ProviderError(IntegrationError):
+    """Raised when a provider operation fails."""
+
+
+class ProviderTimeoutError(ProviderError, TimeoutError):
+    """Raised when a provider operation exceeds its configured timeout."""

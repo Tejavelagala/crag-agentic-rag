@@ -39,16 +39,26 @@ class Settings(BaseSettings):
     def validate_enabled_integrations(self) -> "Settings":
         """Require only the credentials needed by enabled integrations."""
         missing: list[str] = []
-        if self.enable_openai and self.openai_api_key is None:
+        if self.enable_openai and not self._has_value(self.openai_api_key):
             missing.append("CRAG_OPENAI_API_KEY")
-        if self.enable_tavily and self.tavily_api_key is None:
+        if self.enable_tavily and not self._has_value(self.tavily_api_key):
             missing.append("CRAG_TAVILY_API_KEY")
-        if self.enable_qdrant and not self.qdrant_url:
+        if self.enable_qdrant and not self._has_value(self.qdrant_url):
             missing.append("CRAG_QDRANT_URL")
         if missing:
             fields = ", ".join(missing)
-            raise ValueError(f"Enabled integration settings are missing: {fields}")
+            raise ValueError(
+                f"Enabled integration settings must be non-empty: {fields}"
+            )
         return self
+
+    @staticmethod
+    def _has_value(value: SecretStr | str | None) -> bool:
+        """Return whether a setting contains non-whitespace content."""
+        if value is None:
+            return False
+        raw_value = value.get_secret_value() if isinstance(value, SecretStr) else value
+        return bool(raw_value.strip())
 
 
 @lru_cache

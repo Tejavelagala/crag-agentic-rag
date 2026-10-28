@@ -3,8 +3,8 @@
 This repository is the production-grade foundation for a stateful corrective
 RAG system. It is intentionally small at this stage: the package provides
 typed configuration, centralized logging, application exceptions, and a local
-health status model. The retrieval pipeline, LangGraph orchestration, Qdrant
-integration, web search, and model providers are planned but not implemented.
+health status model. It also defines validated evidence models and provider
+contracts without implementing external integrations or workflows.
 
 ## Setup
 
@@ -54,17 +54,32 @@ marked `integration`, and require explicit opt-in and configured services.
 
 - `src/crag/` package with typed settings, logging setup, exceptions, and a
   local-only health status check.
+- Validated document, evidence, web-result, and grading models.
+- Deterministic character-based parent-child document ingestion with
+  configurable overlapping child chunks.
+- Async provider contracts for chat, embeddings, vector storage, and web
+  search, with explicit timeout parameters.
+- Concrete asynchronous OpenAI, Qdrant, and Tavily adapters with deterministic
+  provider-error translation and mocked unit tests.
+- A typed LangGraph corrective retrieval workflow that grades internal evidence,
+  falls back to web search, and generates grounded answers.
+- A FastAPI application factory with `/api/v1/ask`, local liveness, and
+  dependency-configuration readiness endpoints.
 - Deterministic unit tests and an integration-test convention.
 - Packaging, Ruff, pytest, environment, and project engineering configuration.
 
 ### Planned
 
-- Typed `TypedDict` LangGraph state and workflow nodes.
 - Internal retrieval and Qdrant vector-store integration.
-- Retrieval grading with validated Pydantic structured outputs.
-- Tavily web evaluation and corrective retrieval.
-- Configurable OpenAI or Ollama model providers.
-- FastAPI application endpoints.
 
 No planned component is represented as implemented until it has real code and
 tests.
+
+## Document ingestion
+
+`crag.ingestion.ingest_document` accepts document text and source metadata and
+returns ordered `DocumentChunk` records. It creates contiguous parent sections
+and smaller overlapping child chunks linked by `parent_id`; IDs are stable for
+the same document identity, content, and chunk position. Chunking is
+character-based, not token-aware, and does not normalize text or split on
+semantic boundaries.
