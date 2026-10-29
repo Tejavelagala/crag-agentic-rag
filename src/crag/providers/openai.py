@@ -33,10 +33,20 @@ class OpenAIChatProvider(ChatProvider):
         selected_model = model or settings.openai_chat_model
         if not selected_model.strip():
             raise ValueError("model must not be blank")
+        self._owns_client = client is None
+        self._closed = False
         self._client = client or AsyncOpenAI(
             api_key=settings.openai_api_key.get_secret_value()
         )
         self._model = selected_model
+
+    async def close(self) -> None:
+        """Close the client when it was created by this provider."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client:
+            await self._client.close()
 
     async def generate(
         self,
@@ -115,12 +125,22 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
             raise ValueError("model must not be blank")
         if dimensions is not None and dimensions <= 0:
             raise ValueError("dimensions must be greater than zero")
+        self._owns_client = client is None
+        self._closed = False
         self._client = client or AsyncOpenAI(
             api_key=settings.openai_api_key.get_secret_value()
         )
         self._model = selected_model
         self._dimensions = dimensions
         self._dimension: int | None = dimensions
+
+    async def close(self) -> None:
+        """Close the client when it was created by this provider."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client:
+            await self._client.close()
 
     async def embed_query(
         self,

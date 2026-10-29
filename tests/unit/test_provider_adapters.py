@@ -183,6 +183,10 @@ class FakeQdrantClient:
     def __init__(self) -> None:
         self.points: list[object] = []
         self.created = False
+        self.close_calls = 0
+
+    async def close(self) -> None:
+        self.close_calls += 1
 
     async def collection_exists(self, _: str) -> bool:
         return self.created
@@ -262,6 +266,24 @@ def test_qdrant_rejects_embedding_dimension_mismatch() -> None:
 
         with pytest.raises(ProviderError, match="dimension"):
             await provider.upsert_chunks(chunks)
+
+    asyncio.run(exercise())
+
+
+def test_qdrant_close_does_not_close_injected_client() -> None:
+    async def exercise() -> None:
+        client = FakeQdrantClient()
+        provider = QdrantVectorStoreProvider(
+            settings_with_credentials(),
+            FakeEmbeddingProvider(),
+            vector_size=2,
+            client=client,
+        )
+
+        await provider.close()
+        await provider.close()
+
+        assert client.close_calls == 0
 
     asyncio.run(exercise())
 

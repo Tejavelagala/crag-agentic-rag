@@ -35,8 +35,18 @@ class OllamaChatProvider(ChatProvider):
             raise ValueError("Ollama base URL must not be blank")
         if not selected_model.strip():
             raise ValueError("Ollama chat model must not be blank")
+        self._owns_client = client is None
+        self._closed = False
         self._client = client or AsyncClient(host=base_url)
         self._model = selected_model
+
+    async def close(self) -> None:
+        """Close the underlying Ollama client."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client:
+            await self._client.close()
 
     async def generate(
         self,
@@ -109,9 +119,19 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
             raise ValueError("Ollama base URL must not be blank")
         if not selected_model.strip():
             raise ValueError("Ollama embedding model must not be blank")
+        self._owns_client = client is None
+        self._closed = False
         self._client = client or AsyncClient(host=base_url)
         self._model = selected_model
         self._dimension: int | None = None
+
+    async def close(self) -> None:
+        """Close the underlying Ollama client."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client:
+            await self._client.close()
 
     async def embed_query(
         self,

@@ -18,6 +18,43 @@ Copy-Item .env.example .env
 
 `.env` is ignored by Git. Keep credentials out of source control.
 
+## Run the API locally
+
+From PowerShell, activate the environment and install the project:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+```
+
+Select local Ollama mode and start the application with Uvicorn:
+
+```powershell
+$env:CRAG_PROVIDER_MODE = "local"
+$env:CRAG_OLLAMA_BASE_URL = "http://localhost:11434"
+$env:CRAG_OLLAMA_CHAT_MODEL = "qwen2.5:3b"
+$env:CRAG_OLLAMA_EMBEDDING_MODEL = "nomic-embed-text"
+uvicorn crag.main:app
+```
+
+The application builds its configured providers during startup. Importing
+`crag.main:app` does not contact Ollama, Qdrant, OpenAI, or Tavily. The
+embedding dimension probe and Qdrant client are initialized only during the
+FastAPI lifespan and the owned Qdrant client is closed during shutdown.
+
+In another PowerShell window, check the local health routes:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health/live
+Invoke-RestMethod http://127.0.0.1:8000/health/ready
+```
+
+Run the deterministic test suite with:
+
+```powershell
+pytest -m "not integration" -q
+```
+
 ## Configuration
 
 Settings use the `CRAG_` environment-variable prefix and also load a local

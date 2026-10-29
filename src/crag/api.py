@@ -1,7 +1,7 @@
 """FastAPI application for the corrective retrieval workflow."""
 
 import logging
-from typing import Literal
+from typing import Literal, Protocol
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.exceptions import RequestValidationError
@@ -10,9 +10,16 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from crag.health import HealthStatus, get_health_status
 from crag.models import JsonValue
-from crag.workflow import CragState, CragWorkflow
+from crag.workflow import CragState
 
 logger = logging.getLogger(__name__)
+
+
+class WorkflowProtocol(Protocol):
+    """Minimal workflow interface required by the HTTP API."""
+
+    async def invoke(self, question: str) -> CragState:
+        """Execute the workflow for one question."""
 
 
 class AskRequest(BaseModel):
@@ -55,12 +62,12 @@ class AskResponse(BaseModel):
 class HealthResponse(BaseModel):
     """Health response that reports only checks performed by the API."""
 
-    status: Literal["healthy", "ready"]
+    status: Literal["healthy", "ready", "not_ready"]
     service: str = "crag"
     checks: dict[str, bool]
 
 
-def create_app(workflow: CragWorkflow) -> FastAPI:
+def create_app(workflow: WorkflowProtocol) -> FastAPI:
     """Create an API application using an explicitly injected workflow."""
     if workflow is None:
         raise ValueError("workflow is required")
@@ -122,7 +129,20 @@ def create_app(workflow: CragWorkflow) -> FastAPI:
         )
 
     @app.get("/health/ready", response_model=HealthResponse)
-    async def ready() -> HealthResponse:
+    async def ready() -> HealthResponse | JSONResponse:
+        workflow_configured = getattr(workflow, "is_ready", True)
+        if not workflow_configured:
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "status": "not_ready",
+                    "service": "crag",
+                    "checks": {
+                        "application": True,
+                        "workflow_configured": False,
+                    },
+                },
+            )
         return HealthResponse(
             status="ready",
             checks={"application": True, "workflow_configured": True},

@@ -23,9 +23,19 @@ class TavilySearchProvider(WebSearchProvider):
     ) -> None:
         if settings.tavily_api_key is None:
             raise ValueError("Tavily API credentials are required")
+        self._owns_client = client is None
+        self._closed = False
         self._client = client or AsyncTavilyClient(
             api_key=settings.tavily_api_key.get_secret_value()
         )
+
+    async def close(self) -> None:
+        """Close the client when it was created by this provider."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client:
+            await self._client.close()
 
     async def search(
         self,

@@ -35,6 +35,8 @@ class QdrantVectorStoreProvider(VectorStoreProvider):
             raise ValueError("collection_name must not be blank")
         if vector_size <= 0:
             raise ValueError("vector_size must be greater than zero")
+        self._owns_client = client is None
+        self._closed = False
         self._client = client or AsyncQdrantClient(
             url=settings.qdrant_url,
             api_key=(
@@ -46,6 +48,18 @@ class QdrantVectorStoreProvider(VectorStoreProvider):
         self._embeddings = embeddings
         self._collection_name = selected_collection
         self._vector_size = vector_size
+
+    async def close(self) -> None:
+        """Close the client when it was created by this provider."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client:
+            try:
+                await self._client.close()
+            except Exception:
+                self._closed = False
+                raise
 
     async def upsert_chunks(
         self,

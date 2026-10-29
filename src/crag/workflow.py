@@ -1,6 +1,7 @@
 """LangGraph corrective retrieval orchestration."""
 
 import math
+from collections.abc import Sequence
 from typing import Literal, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -37,6 +38,7 @@ class CragWorkflow:
         top_k: int = 5,
         max_web_results: int = 5,
         timeout: float = 30.0,
+        owned_resources: Sequence[object] = (),
     ) -> None:
         if top_k <= 0:
             raise ValueError("top_k must be greater than zero")
@@ -50,6 +52,8 @@ class CragWorkflow:
         self._top_k = top_k
         self._max_web_results = max_web_results
         self._timeout = timeout
+        self._closed = False
+        self._owned_resources = (vector_store, *owned_resources)
         self._graph = self._build_graph()
 
     async def invoke(self, question: str) -> CragState:
@@ -67,6 +71,26 @@ class CragWorkflow:
             "error": None,
         }
         return await self._graph.ainvoke(initial_state)
+
+    async def close(self) -> None:
+        """Close resources owned by the injected vector-store provider."""
+        if self._closed:
+            return
+        self._closed = True
+        first_error: Exception | None = None
+        try:
+            for resource in self._owned_resources:
+                close = getattr(resource, "close", None)
+                if close is not None:
+                    try:
+                        await close()
+                    except Exception as exc:
+                        if first_error is None:
+                            first_error = exc
+        finally:
+            if first_error is not None:
+                self._closed = False
+                raise first_error
 
     def _build_graph(self):
         graph = StateGraph(CragState)

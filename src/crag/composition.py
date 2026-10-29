@@ -57,30 +57,58 @@ async def build_workflow(
         embeddings = embedding_provider or OpenAIEmbeddingProvider(active_settings)
         collection_name = active_settings.qdrant_collection_name
 
-    vector = await embeddings.embed_query(
-        "CRAG embedding dimension probe",
-        timeout=DEFAULT_PROVIDER_TIMEOUT_SECONDS,
-    )
-    web_search: WebSearchProvider
-    if web_search_provider is not None:
-        web_search = web_search_provider
-    elif active_settings.enable_tavily:
-        web_search = TavilySearchProvider(active_settings)
-    else:
-        web_search = DisabledWebSearchProvider()
+    vector_store: QdrantVectorStoreProvider | None = None
+    web_search: WebSearchProvider | None = None
+    try:
+        vector = await embeddings.embed_query(
+            "CRAG embedding dimension probe",
+            timeout=DEFAULT_PROVIDER_TIMEOUT_SECONDS,
+        )
+        if web_search_provider is not None:
+            web_search = web_search_provider
+        elif active_settings.enable_tavily:
+            web_search = TavilySearchProvider(active_settings)
+        else:
+            web_search = DisabledWebSearchProvider()
 
-    vector_store = QdrantVectorStoreProvider(
-        active_settings,
-        embeddings,
-        collection_name=collection_name,
-        vector_size=len(vector),
-        client=qdrant_client,
-    )
-    return CragWorkflow(
-        vector_store=vector_store,
-        chat=chat,
-        web_search=web_search,
-    )
+        vector_store = QdrantVectorStoreProvider(
+            active_settings,
+            embeddings,
+            collection_name=collection_name,
+            vector_size=len(vector),
+            client=qdrant_client,
+        )
+        owned_resources = [
+            resource
+            for resource, injected in (
+                (embeddings, embedding_provider),
+                (chat, chat_provider),
+                (web_search, web_search_provider),
+            )
+            if injected is None
+        ]
+        return CragWorkflow(
+            vector_store=vector_store,
+            chat=chat,
+            web_search=web_search,
+            owned_resources=owned_resources,
+        )
+    except Exception:
+        if vector_store is not None:
+            await vector_store.close()
+        if embedding_provider is None:
+            close = getattr(embeddings, "close", None)
+            if close is not None:
+                await close()
+        if chat_provider is None:
+            close = getattr(chat, "close", None)
+            if close is not None:
+                await close()
+        if web_search_provider is None and web_search is not None:
+            close = getattr(web_search, "close", None)
+            if close is not None:
+                await close()
+        raise
 
 
 async def build_app(

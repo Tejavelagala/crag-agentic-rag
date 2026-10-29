@@ -6,7 +6,7 @@ import pytest
 
 from crag.exceptions import ProviderError
 from crag.models import GradingDecision, RetrievedEvidence, WebSearchResult
-from crag.workflow import invoke_crag
+from crag.workflow import CragWorkflow, invoke_crag
 
 
 class FakeVectorStore:
@@ -17,6 +17,10 @@ class FakeVectorStore:
     ) -> None:
         self.evidence = evidence or []
         self.error = error
+        self.close_calls = 0
+
+    async def close(self) -> None:
+        self.close_calls += 1
 
     async def retrieve(
         self,
@@ -233,3 +237,20 @@ def test_invalid_question_and_workflow_limits_are_rejected() -> None:
             )
 
     asyncio.run(exercise())
+
+
+def test_workflow_close_is_idempotent() -> None:
+    vector_store = FakeVectorStore()
+    workflow = CragWorkflow(
+        vector_store=vector_store,
+        chat=FakeChat(),
+        web_search=FakeWebSearch(),
+    )
+
+    async def exercise() -> None:
+        await workflow.close()
+        await workflow.close()
+
+    asyncio.run(exercise())
+
+    assert vector_store.close_calls == 1
