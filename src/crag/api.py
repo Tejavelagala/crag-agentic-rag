@@ -165,9 +165,10 @@ def _safe_diagnostics(state: CragState) -> list[str]:
             diagnostics.append("web_search_failed")
         elif diagnostic.startswith("Answer generation failed"):
             diagnostics.append("answer_generation_failed")
-    if state.get("error", "").startswith("Web search failed"):
+    error = state.get("error") or ""
+    if error.startswith("Web search failed"):
         diagnostics.append("web_search_failed")
-    elif state.get("error", "").startswith("Answer generation failed"):
+    elif error.startswith("Answer generation failed"):
         diagnostics.append("answer_generation_failed")
     return list(dict.fromkeys(diagnostics))
 

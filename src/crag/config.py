@@ -25,15 +25,22 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_json: bool = False
 
+    provider_mode: Literal["local", "hosted"] = "local"
     enable_openai: bool = False
     openai_api_key: SecretStr | None = Field(default=None, repr=False)
+    openai_chat_model: str = "gpt-4o-mini"
+    openai_embedding_model: str = "text-embedding-3-small"
     enable_tavily: bool = False
     tavily_api_key: SecretStr | None = Field(default=None, repr=False)
     enable_qdrant: bool = False
     qdrant_url: str | None = None
     qdrant_api_key: SecretStr | None = Field(default=None, repr=False)
+    qdrant_collection_name: str = "crag_chunks"
+    ollama_qdrant_collection_name: str = "crag_chunks_ollama"
     enable_ollama: bool = False
-    ollama_base_url: str | None = None
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_chat_model: str = "qwen2.5:3b"
+    ollama_embedding_model: str = "nomic-embed-text"
 
     @model_validator(mode="after")
     def validate_enabled_integrations(self) -> "Settings":
@@ -45,6 +52,15 @@ class Settings(BaseSettings):
             missing.append("CRAG_TAVILY_API_KEY")
         if self.enable_qdrant and not self._has_value(self.qdrant_url):
             missing.append("CRAG_QDRANT_URL")
+        if self.provider_mode == "hosted" and not self._has_value(self.openai_api_key):
+            missing.append("CRAG_OPENAI_API_KEY")
+        if self.enable_ollama or self.provider_mode == "local":
+            if not self._has_value(self.ollama_base_url):
+                missing.append("CRAG_OLLAMA_BASE_URL")
+            if not self._has_value(self.ollama_chat_model):
+                missing.append("CRAG_OLLAMA_CHAT_MODEL")
+            if not self._has_value(self.ollama_embedding_model):
+                missing.append("CRAG_OLLAMA_EMBEDDING_MODEL")
         if missing:
             fields = ", ".join(missing)
             raise ValueError(

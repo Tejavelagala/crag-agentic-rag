@@ -24,13 +24,14 @@ class QdrantVectorStoreProvider(VectorStoreProvider):
         settings: Settings,
         embeddings: EmbeddingProvider,
         *,
-        collection_name: str = "crag_chunks",
+        collection_name: str | None = None,
         vector_size: int,
         client: AsyncQdrantClient | None = None,
     ) -> None:
         if not settings.qdrant_url:
             raise ValueError("Qdrant URL is required")
-        if not collection_name.strip():
+        selected_collection = collection_name or settings.qdrant_collection_name
+        if not selected_collection.strip():
             raise ValueError("collection_name must not be blank")
         if vector_size <= 0:
             raise ValueError("vector_size must be greater than zero")
@@ -43,7 +44,7 @@ class QdrantVectorStoreProvider(VectorStoreProvider):
             ),
         )
         self._embeddings = embeddings
-        self._collection_name = collection_name
+        self._collection_name = selected_collection
         self._vector_size = vector_size
 
     async def upsert_chunks(

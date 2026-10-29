@@ -143,6 +143,7 @@ class CragWorkflow:
         return "web_search"
 
     async def _search_web(self, state: CragState) -> CragState:
+        diagnostics = list(state.get("diagnostics", []))
         try:
             results = await self._web_search.search(
                 state["question"],
@@ -154,11 +155,12 @@ class CragWorkflow:
                 "fallback_used": True,
             }
         except ProviderError as exc:
+            diagnostics.append(f"Web search failed: {exc}")
             return {
                 "web_results": [],
                 "fallback_used": True,
                 "error": f"Web search failed: {exc}",
-                "diagnostics": [f"Web search failed: {exc}"],
+                "diagnostics": diagnostics,
             }
 
     async def _generate_answer(self, state: CragState) -> CragState:

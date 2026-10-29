@@ -33,6 +33,7 @@ def test_ask_returns_internal_answer_and_safe_sources() -> None:
             ],
             "web_results": [],
             "fallback_used": False,
+            "error": None,
             "diagnostics": [],
         }
     )

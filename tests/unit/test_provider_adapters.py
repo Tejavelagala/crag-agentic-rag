@@ -20,6 +20,7 @@ class FakeAnswer(BaseModel):
 
 def settings_with_credentials() -> Settings:
     return Settings(
+        _env_file=None,
         openai_api_key="test-openai-key",
         tavily_api_key="test-tavily-key",
         qdrant_url="http://qdrant.test",
@@ -266,7 +267,7 @@ def test_qdrant_rejects_embedding_dimension_mismatch() -> None:
 
 
 def test_adapters_reject_missing_credentials_and_invalid_outputs() -> None:
-    settings = Settings()
+    settings = Settings(_env_file=None)
     with pytest.raises(ValueError, match="credentials"):
         OpenAIChatProvider(settings)
     with pytest.raises(ValueError, match="credentials"):

@@ -25,17 +25,18 @@ class OpenAIChatProvider(ChatProvider):
         self,
         settings: Settings,
         *,
-        model: str = "gpt-4o-mini",
+        model: str | None = None,
         client: AsyncOpenAI | None = None,
     ) -> None:
         if settings.openai_api_key is None:
             raise ValueError("OpenAI API credentials are required")
-        if not model.strip():
+        selected_model = model or settings.openai_chat_model
+        if not selected_model.strip():
             raise ValueError("model must not be blank")
         self._client = client or AsyncOpenAI(
             api_key=settings.openai_api_key.get_secret_value()
         )
-        self._model = model
+        self._model = selected_model
 
     async def generate(
         self,
@@ -103,20 +104,21 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         self,
         settings: Settings,
         *,
-        model: str = "text-embedding-3-small",
+        model: str | None = None,
         dimensions: int | None = None,
         client: AsyncOpenAI | None = None,
     ) -> None:
         if settings.openai_api_key is None:
             raise ValueError("OpenAI API credentials are required")
-        if not model.strip():
+        selected_model = model or settings.openai_embedding_model
+        if not selected_model.strip():
             raise ValueError("model must not be blank")
         if dimensions is not None and dimensions <= 0:
             raise ValueError("dimensions must be greater than zero")
         self._client = client or AsyncOpenAI(
             api_key=settings.openai_api_key.get_secret_value()
         )
-        self._model = model
+        self._model = selected_model
         self._dimensions = dimensions
         self._dimension: int | None = dimensions
 

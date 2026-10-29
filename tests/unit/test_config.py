@@ -23,7 +23,7 @@ def test_settings_load_defaults_without_credentials(
 ) -> None:
     monkeypatch.chdir(tmp_path)
 
-    settings = Settings()
+    settings = Settings(_env_file=None)
 
     assert settings.environment == "development"
     assert settings.enable_openai is False
@@ -35,7 +35,7 @@ def test_settings_load_environment_overrides(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setenv("CRAG_DEBUG", "true")
     monkeypatch.setenv("CRAG_LOG_LEVEL", "DEBUG")
 
-    settings = Settings()
+    settings = Settings(_env_file=None)
 
     assert settings.environment == "testing"
     assert settings.debug is True
@@ -48,7 +48,7 @@ def test_settings_load_valid_credentials_when_integration_enabled(
     monkeypatch.setenv("CRAG_ENABLE_OPENAI", "true")
     monkeypatch.setenv("CRAG_OPENAI_API_KEY", "test-openai-key")
 
-    settings = Settings()
+    settings = Settings(_env_file=None)
 
     assert settings.openai_api_key is not None
     assert settings.openai_api_key.get_secret_value() == "test-openai-key"
@@ -66,7 +66,7 @@ def test_enabled_provider_rejects_missing_or_blank_credentials(
         monkeypatch.setenv("CRAG_TAVILY_API_KEY", value)
 
     with pytest.raises(ValidationError, match="CRAG_TAVILY_API_KEY") as error:
-        Settings()
+        Settings(_env_file=None)
     assert "test-secret" not in str(error.value)
 
 
@@ -76,7 +76,7 @@ def test_disabled_provider_does_not_require_blank_credentials(
     monkeypatch.setenv("CRAG_ENABLE_OPENAI", "false")
     monkeypatch.setenv("CRAG_OPENAI_API_KEY", "   ")
 
-    settings = Settings()
+    settings = Settings(_env_file=None)
 
     assert settings.enable_openai is False
 
@@ -106,7 +106,7 @@ def test_invalid_environment_is_rejected(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setenv("CRAG_ENVIRONMENT", "invalid")
 
     with pytest.raises(ValidationError, match="environment"):
-        Settings()
+        Settings(_env_file=None)
 
 
 def test_qdrant_requires_non_blank_url(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -114,4 +114,42 @@ def test_qdrant_requires_non_blank_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CRAG_QDRANT_URL", "  ")
 
     with pytest.raises(ValidationError, match="CRAG_QDRANT_URL"):
-        Settings()
+        Settings(_env_file=None)
+
+
+@pytest.mark.parametrize(
+    ("field", "error_name"),
+    [
+        ("ollama_base_url", "CRAG_OLLAMA_BASE_URL"),
+        ("ollama_chat_model", "CRAG_OLLAMA_CHAT_MODEL"),
+        ("ollama_embedding_model", "CRAG_OLLAMA_EMBEDDING_MODEL"),
+    ],
+)
+def test_enabled_ollama_rejects_blank_configuration(
+    field: str,
+    error_name: str,
+) -> None:
+    values = {
+        "enable_ollama": True,
+        "ollama_base_url": "http://localhost:11434",
+        "ollama_chat_model": "llama3.2",
+        "ollama_embedding_model": "nomic-embed-text",
+    }
+    values[field] = "   "
+
+    with pytest.raises(ValidationError, match=error_name):
+        Settings(_env_file=None, **values)
+
+
+def test_hosted_mode_requires_openai_credentials() -> None:
+    with pytest.raises(ValidationError, match="CRAG_OPENAI_API_KEY"):
+        Settings(_env_file=None, provider_mode="hosted")
+
+
+def test_local_mode_defaults_to_ollama_models() -> None:
+    settings = Settings(_env_file=None)
+
+    assert settings.provider_mode == "local"
+    assert settings.ollama_base_url == "http://localhost:11434"
+    assert settings.ollama_chat_model == "qwen2.5:3b"
+    assert settings.ollama_embedding_model == "nomic-embed-text"

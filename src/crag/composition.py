@@ -1,0 +1,102 @@
+"""Explicit provider composition for configured CRAG runtime modes."""
+
+from fastapi import FastAPI
+from qdrant_client import AsyncQdrantClient
+
+from crag.api import create_app
+from crag.config import Settings, get_settings
+from crag.exceptions import ConfigurationError, ProviderError
+from crag.models import WebSearchResult
+from crag.providers.base import (
+    DEFAULT_PROVIDER_TIMEOUT_SECONDS,
+    ChatProvider,
+    EmbeddingProvider,
+    WebSearchProvider,
+)
+from crag.providers.ollama import OllamaChatProvider, OllamaEmbeddingProvider
+from crag.providers.openai import OpenAIChatProvider, OpenAIEmbeddingProvider
+from crag.providers.qdrant import QdrantVectorStoreProvider
+from crag.providers.tavily import TavilySearchProvider
+from crag.workflow import CragWorkflow
+
+
+class DisabledWebSearchProvider(WebSearchProvider):
+    """Make unavailable web fallback explicit in local-only deployments."""
+
+    async def search(
+        self,
+        query: str,
+        *,
+        max_results: int = 5,
+        timeout: float = DEFAULT_PROVIDER_TIMEOUT_SECONDS,
+    ) -> list[WebSearchResult]:
+        raise ProviderError("Web search is not configured")
+
+
+async def build_workflow(
+    settings: Settings | None = None,
+    *,
+    qdrant_client: AsyncQdrantClient | None = None,
+    chat_provider: ChatProvider | None = None,
+    embedding_provider: EmbeddingProvider | None = None,
+    web_search_provider: WebSearchProvider | None = None,
+) -> CragWorkflow:
+    """Build providers and workflow without contacting services at import time."""
+    active_settings = settings or get_settings()
+    if not active_settings.qdrant_url:
+        raise ConfigurationError(
+            "CRAG_QDRANT_URL is required to build the configured workflow"
+        )
+
+    if active_settings.provider_mode == "local":
+        chat = chat_provider or OllamaChatProvider(active_settings)
+        embeddings = embedding_provider or OllamaEmbeddingProvider(active_settings)
+        collection_name = active_settings.ollama_qdrant_collection_name
+    else:
+        chat = chat_provider or OpenAIChatProvider(active_settings)
+        embeddings = embedding_provider or OpenAIEmbeddingProvider(active_settings)
+        collection_name = active_settings.qdrant_collection_name
+
+    vector = await embeddings.embed_query(
+        "CRAG embedding dimension probe",
+        timeout=DEFAULT_PROVIDER_TIMEOUT_SECONDS,
+    )
+    web_search: WebSearchProvider
+    if web_search_provider is not None:
+        web_search = web_search_provider
+    elif active_settings.enable_tavily:
+        web_search = TavilySearchProvider(active_settings)
+    else:
+        web_search = DisabledWebSearchProvider()
+
+    vector_store = QdrantVectorStoreProvider(
+        active_settings,
+        embeddings,
+        collection_name=collection_name,
+        vector_size=len(vector),
+        client=qdrant_client,
+    )
+    return CragWorkflow(
+        vector_store=vector_store,
+        chat=chat,
+        web_search=web_search,
+    )
+
+
+async def build_app(
+    settings: Settings | None = None,
+    *,
+    qdrant_client: AsyncQdrantClient | None = None,
+    chat_provider: ChatProvider | None = None,
+    embedding_provider: EmbeddingProvider | None = None,
+    web_search_provider: WebSearchProvider | None = None,
+) -> FastAPI:
+    """Build the FastAPI application after explicit provider initialization."""
+    workflow = await build_workflow(
+        settings,
+        qdrant_client=qdrant_client,
+        chat_provider=chat_provider,
+        embedding_provider=embedding_provider,
+        web_search_provider=web_search_provider,
+    )
+    return create_app(workflow)
