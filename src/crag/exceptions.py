@@ -1,21 +1,17 @@
-"""Application-specific exception hierarchy."""
+"""Backward-compatible exception imports."""
 
+from crag.core.exceptions import (
+    ConfigurationError,
+    CragError,
+    IntegrationError,
+    ProviderError,
+    ProviderTimeoutError,
+)
 
-class CragError(Exception):
-    """Base class for expected CRAG application errors."""
-
-
-class ConfigurationError(CragError):
-    """Raised when application configuration is invalid."""
-
-
-class IntegrationError(CragError):
-    """Raised when a configured external integration fails."""
-
-
-class ProviderError(IntegrationError):
-    """Raised when a provider operation fails."""
-
-
-class ProviderTimeoutError(ProviderError, TimeoutError):
-    """Raised when a provider operation exceeds its configured timeout."""
+__all__ = [
+    "ConfigurationError",
+    "CragError",
+    "IntegrationError",
+    "ProviderError",
+    "ProviderTimeoutError",
+]

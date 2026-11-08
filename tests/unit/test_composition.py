@@ -4,6 +4,7 @@ import asyncio
 
 import pytest
 
+import crag.composition
 from crag.composition import DisabledWebSearchProvider, build_workflow
 from crag.config import Settings
 from crag.exceptions import ConfigurationError, ProviderError
@@ -45,6 +46,30 @@ class FakeEmbeddings:
         timeout: float = 30.0,
     ) -> list[list[float]]:
         return [[1.0, 2.0, 3.0] for _ in texts]
+
+
+class ClosableChat(FakeChat):
+    def __init__(self) -> None:
+        self.close_calls = 0
+
+    async def close(self) -> None:
+        self.close_calls += 1
+
+
+class FailingEmbeddings(FakeEmbeddings):
+    def __init__(self) -> None:
+        self.close_calls = 0
+
+    async def embed_query(
+        self,
+        text: str,
+        *,
+        timeout: float = 30.0,
+    ) -> list[float]:
+        raise ProviderError("embedding probe failed")
+
+    async def close(self) -> None:
+        self.close_calls += 1
 
 
 class FakeQdrantClient:
@@ -93,3 +118,32 @@ def test_disabled_web_search_fails_explicitly() -> None:
             await DisabledWebSearchProvider().search("question")
 
     asyncio.run(exercise())
+
+
+def test_composition_cleans_up_owned_providers_when_probe_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings(
+        _env_file=None,
+        qdrant_url="http://qdrant.test",
+    )
+    chat = ClosableChat()
+    embeddings = FailingEmbeddings()
+    monkeypatch.setattr(crag.composition, "OllamaChatProvider", lambda _: chat)
+    monkeypatch.setattr(
+        crag.composition,
+        "OllamaEmbeddingProvider",
+        lambda _: embeddings,
+    )
+
+    async def exercise() -> None:
+        with pytest.raises(ProviderError, match="embedding probe failed"):
+            await build_workflow(
+                settings,
+                qdrant_client=FakeQdrantClient(),
+            )
+
+    asyncio.run(exercise())
+
+    assert chat.close_calls == 1
+    assert embeddings.close_calls == 1

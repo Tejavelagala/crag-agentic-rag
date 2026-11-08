@@ -5,9 +5,9 @@ from uuid import NAMESPACE_URL, uuid5
 
 from qdrant_client import AsyncQdrantClient, models
 
-from crag.config import Settings
-from crag.exceptions import ProviderError
-from crag.models import DocumentChunk, RetrievedEvidence
+from crag.core.config import Settings
+from crag.core.exceptions import ProviderError
+from crag.core.models import DocumentChunk, RetrievedEvidence
 from crag.providers._runtime import validate_timeout, with_timeout
 from crag.providers.base import (
     DEFAULT_PROVIDER_TIMEOUT_SECONDS,
@@ -48,6 +48,21 @@ class QdrantVectorStoreProvider(VectorStoreProvider):
         self._embeddings = embeddings
         self._collection_name = selected_collection
         self._vector_size = vector_size
+
+    @property
+    def client(self) -> AsyncQdrantClient:
+        """Return the configured client for explicitly shared lifecycle use."""
+        return self._client
+
+    @property
+    def embeddings(self) -> EmbeddingProvider:
+        """Return the configured embedding provider."""
+        return self._embeddings
+
+    @property
+    def vector_size(self) -> int:
+        """Return the configured vector dimension."""
+        return self._vector_size
 
     async def close(self) -> None:
         """Close the client when it was created by this provider."""
@@ -140,6 +155,36 @@ class QdrantVectorStoreProvider(VectorStoreProvider):
             raise
         except Exception as exc:
             raise ProviderError("Qdrant retrieval failed") from exc
+
+    async def delete_document(
+        self,
+        document_id: str,
+        *,
+        timeout: float = DEFAULT_PROVIDER_TIMEOUT_SECONDS,
+    ) -> None:
+        if not document_id.strip():
+            raise ValueError("document_id must not be blank")
+        validate_timeout(timeout)
+        try:
+            await with_timeout(
+                self._client.delete(
+                    collection_name=self._collection_name,
+                    points_selector=models.FilterSelector(
+                        filter=models.Filter(
+                            must=[
+                                models.FieldCondition(
+                                    key="document_id",
+                                    match=models.MatchValue(value=document_id),
+                                )
+                            ]
+                        )
+                    ),
+                    wait=True,
+                ),
+                timeout,
+            )
+        except Exception as exc:
+            raise ProviderError("Qdrant document deletion failed") from exc
 
     async def _ensure_collection(self) -> None:
         exists = await self._client.collection_exists(self._collection_name)

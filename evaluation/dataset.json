@@ -1,0 +1,99 @@
+{
+  "version": "1.0.0",
+  "documents": [
+    {
+      "document_id": "eval-crag-local-models",
+      "text": "The local CRAG runtime uses qwen2.5:3b for chat generation and nomic-embed-text for embeddings. Qdrant stores the vectors in a collection dedicated to the Ollama embedding model."
+    },
+    {
+      "document_id": "eval-crag-workflow",
+      "text": "The CRAG workflow retrieves internal evidence, grades its relevance with a structured decision, and generates an answer from accepted evidence. When internal evidence is insufficient, it attempts corrective web search; local-only mode reports an explicit web-search configuration error instead of inventing results."
+    },
+    {
+      "document_id": "eval-crag-operations",
+      "text": "The CRAG API exposes /health/live for application liveness and /health/ready for application and workflow configuration readiness. Evaluation data belongs in a dedicated collection and must not modify production collections."
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "models-chat",
+      "question": "Which chat model does the local CRAG runtime use?",
+      "expected_facts": ["qwen2.5:3b"],
+      "relevant_source_ids": ["eval-crag-local-models"],
+      "sufficient_internal_evidence": true,
+      "expected_fallback": false
+    },
+    {
+      "case_id": "models-embedding",
+      "question": "Which embedding model does the local CRAG runtime use?",
+      "expected_facts": ["nomic-embed-text"],
+      "relevant_source_ids": ["eval-crag-local-models"],
+      "sufficient_internal_evidence": true,
+      "expected_fallback": false
+    },
+    {
+      "case_id": "models-both",
+      "question": "Which chat and embedding models are configured for local CRAG?",
+      "expected_facts": ["qwen2.5:3b", "nomic-embed-text"],
+      "relevant_source_ids": ["eval-crag-local-models"],
+      "sufficient_internal_evidence": true,
+      "expected_fallback": false
+    },
+    {
+      "case_id": "workflow-stages",
+      "question": "What happens to internal evidence before CRAG generates an answer?",
+      "expected_facts": ["retrieves internal evidence", "grades its relevance"],
+      "relevant_source_ids": ["eval-crag-workflow"],
+      "sufficient_internal_evidence": true,
+      "expected_fallback": false
+    },
+    {
+      "case_id": "workflow-combination",
+      "question": "How does CRAG respond when internal evidence is insufficient in local-only mode?",
+      "expected_facts": ["web search", "does not invent"],
+      "relevant_source_ids": ["eval-crag-workflow"],
+      "sufficient_internal_evidence": true,
+      "expected_fallback": false
+    },
+    {
+      "case_id": "operations-health",
+      "question": "Which endpoint reports application liveness?",
+      "expected_facts": ["/health/live"],
+      "relevant_source_ids": ["eval-crag-operations"],
+      "sufficient_internal_evidence": true,
+      "expected_fallback": false
+    },
+    {
+      "case_id": "operations-readiness",
+      "question": "What does the readiness endpoint check?",
+      "expected_facts": ["workflow configuration"],
+      "relevant_source_ids": ["eval-crag-operations"],
+      "sufficient_internal_evidence": true,
+      "expected_fallback": false
+    },
+    {
+      "case_id": "operations-isolation",
+      "question": "Where should evaluation data be stored?",
+      "expected_facts": ["dedicated collection", "production collections"],
+      "relevant_source_ids": ["eval-crag-operations"],
+      "sufficient_internal_evidence": true,
+      "expected_fallback": false
+    },
+    {
+      "case_id": "unsupported-weather",
+      "question": "What will the weather be in Hyderabad tomorrow?",
+      "expected_facts": [],
+      "relevant_source_ids": [],
+      "sufficient_internal_evidence": false,
+      "expected_fallback": true
+    },
+    {
+      "case_id": "unsupported-stock",
+      "question": "What is the current stock price of Example Corporation?",
+      "expected_facts": [],
+      "relevant_source_ids": [],
+      "sufficient_internal_evidence": false,
+      "expected_fallback": true
+    }
+  ]
+}

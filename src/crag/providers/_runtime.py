@@ -5,7 +5,7 @@ import math
 from collections.abc import Awaitable
 from typing import TypeVar
 
-from crag.exceptions import ProviderTimeoutError
+from crag.core.exceptions import ProviderTimeoutError
 
 ResultT = TypeVar("ResultT")
 

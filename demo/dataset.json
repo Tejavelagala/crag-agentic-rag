@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "documents": [
+    {
+      "document_id": "demo-local-runtime",
+      "text": "The CRAG local demo uses qwen2.5:3b for chat generation and nomic-embed-text for document and query embeddings."
+    },
+    {
+      "document_id": "demo-safe-workflow",
+      "text": "The CRAG workflow retrieves internal evidence, grades its relevance, and generates an answer only from accepted evidence. When evidence is insufficient and web search is disabled, it returns an explicit failure instead of inventing an answer."
+    },
+    {
+      "document_id": "demo-api-operations",
+      "text": "The CRAG demo API exposes /health/live for liveness and /health/ready for application and workflow configuration readiness."
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "demo-models",
+      "question": "Which chat and embedding models does the local CRAG demo use?",
+      "expected_facts": [
+        "qwen2.5:3b",
+        "nomic-embed-text"
+      ],
+      "expected_source_ids": [
+        "demo-local-runtime"
+      ]
+    },
+    {
+      "case_id": "demo-safe-answering",
+      "question": "What does the workflow do when evidence is insufficient and web search is disabled?",
+      "expected_facts": [
+        "explicit failure",
+        "instead of inventing"
+      ],
+      "expected_source_ids": [
+        "demo-safe-workflow"
+      ]
+    },
+    {
+      "case_id": "demo-health",
+      "question": "Which endpoint reports application liveness?",
+      "expected_facts": [
+        "/health/live"
+      ],
+      "expected_source_ids": [
+        "demo-api-operations"
+      ]
+    }
+  ]
+}

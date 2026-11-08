@@ -5,9 +5,9 @@ from typing import Any
 
 from tavily import AsyncTavilyClient
 
-from crag.config import Settings
-from crag.exceptions import ProviderError
-from crag.models import WebSearchResult
+from crag.core.config import Settings
+from crag.core.exceptions import ProviderError
+from crag.core.models import WebSearchResult
 from crag.providers._runtime import validate_timeout, with_timeout
 from crag.providers.base import DEFAULT_PROVIDER_TIMEOUT_SECONDS, WebSearchProvider
 

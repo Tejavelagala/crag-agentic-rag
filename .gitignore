@@ -18,3 +18,5 @@ build/
 *.log
 data/
 qdrant_storage/
+evaluation/results/
+demo/runs/

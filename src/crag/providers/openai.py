@@ -6,8 +6,8 @@ from typing import TypeVar
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
-from crag.config import Settings
-from crag.exceptions import ProviderError
+from crag.core.config import Settings
+from crag.core.exceptions import ProviderError
 from crag.providers._runtime import validate_timeout, with_timeout
 from crag.providers.base import (
     DEFAULT_PROVIDER_TIMEOUT_SECONDS,
@@ -62,6 +62,7 @@ class OpenAIChatProvider(ChatProvider):
                 self._client.chat.completions.create(
                     model=self._model,
                     messages=[{"role": "user", "content": prompt}],
+                    temperature=0,
                 ),
                 timeout,
             )
@@ -90,6 +91,7 @@ class OpenAIChatProvider(ChatProvider):
                     model=self._model,
                     messages=[{"role": "user", "content": prompt}],
                     response_format=output_type,
+                    temperature=0,
                 ),
                 timeout,
             )

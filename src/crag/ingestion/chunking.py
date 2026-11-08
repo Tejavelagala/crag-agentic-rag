@@ -4,7 +4,7 @@ from hashlib import sha256
 
 from pydantic import JsonValue
 
-from crag.models import DocumentChunk
+from crag.core.models import DocumentChunk
 
 
 def ingest_document(

@@ -6,7 +6,7 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
-from crag.models import DocumentChunk, RetrievedEvidence, WebSearchResult
+from crag.core.models import DocumentChunk, RetrievedEvidence, WebSearchResult
 
 DEFAULT_PROVIDER_TIMEOUT_SECONDS = 30.0
 OutputModelT = TypeVar("OutputModelT", bound=BaseModel)
@@ -82,6 +82,15 @@ class VectorStoreProvider(ABC):
         timeout: float = DEFAULT_PROVIDER_TIMEOUT_SECONDS,
     ) -> list[RetrievedEvidence]:
         """Retrieve relevant evidence for a query."""
+
+    async def delete_document(
+        self,
+        document_id: str,
+        *,
+        timeout: float = DEFAULT_PROVIDER_TIMEOUT_SECONDS,
+    ) -> None:
+        """Delete points belonging to one document."""
+        raise NotImplementedError
 
 
 class WebSearchProvider(ABC):

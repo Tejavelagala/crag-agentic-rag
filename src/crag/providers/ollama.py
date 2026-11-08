@@ -7,8 +7,8 @@ from typing import Any, TypeVar
 from ollama import AsyncClient
 from pydantic import BaseModel
 
-from crag.config import Settings
-from crag.exceptions import ProviderError
+from crag.core.config import Settings
+from crag.core.exceptions import ProviderError
 from crag.providers._runtime import validate_timeout, with_timeout
 from crag.providers.base import (
     DEFAULT_PROVIDER_TIMEOUT_SECONDS,
@@ -62,6 +62,7 @@ class OllamaChatProvider(ChatProvider):
                 self._client.chat(
                     model=self._model,
                     messages=[{"role": "user", "content": prompt}],
+                    options={"temperature": 0},
                 ),
                 timeout,
             )
@@ -90,6 +91,7 @@ class OllamaChatProvider(ChatProvider):
                     model=self._model,
                     messages=[{"role": "user", "content": prompt}],
                     format=output_type.model_json_schema(),
+                    options={"temperature": 0},
                 ),
                 timeout,
             )
